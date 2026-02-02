@@ -4,6 +4,8 @@
   "description": "projet web avance M1 p13",
   "main": "index.js",
   "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
