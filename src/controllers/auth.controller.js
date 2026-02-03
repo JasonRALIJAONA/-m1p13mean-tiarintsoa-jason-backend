@@ -25,14 +25,14 @@ exports.register = async (req, res, next) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            return res.fail('Validation échouée', 400, errors.array());
         }
 
         const { email, password, role, nom, prenom } = req.body;
 
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
-            return res.status(409).json({ message: 'Email déjà utilisé' });
+            return res.fail('Email déjà utilisé', 409);
         }
 
         const user = await User.create({
@@ -44,7 +44,7 @@ exports.register = async (req, res, next) => {
         });
 
         const token = createToken(user);
-        return res.status(201).json(formatAuthResponse(user, token));
+        return res.success(formatAuthResponse(user, token), 'Inscription réussie', 201);
     } catch (error) {
         next(error);
     }
@@ -54,23 +54,23 @@ exports.login = async (req, res, next) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            return res.fail('Validation échouée', 400, errors.array());
         }
 
         const { email, password } = req.body;
 
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            return res.status(401).json({ message: 'Identifiants invalides' });
+            return res.fail('Identifiants invalides', 401);
         }
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Identifiants invalides' });
+            return res.fail('Identifiants invalides', 401);
         }
 
         const token = createToken(user);
-        return res.status(200).json(formatAuthResponse(user, token));
+        return res.success(formatAuthResponse(user, token), 'Connexion réussie', 200);
     } catch (error) {
         next(error);
     }
