@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/db');
+const responseMiddleware = require('./middlewares/response.middleware');
 
 // Connexion à la base de données
 connectDB();
@@ -13,21 +14,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(responseMiddleware);
 
 // Dossier statique pour les uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Route de test
 app.get('/', (req, res) => {
-    res.json({
-        message: 'API Centre Commercial - m1p13mean-tiarintsoa-jason',
-        version: '1.0.0',
-        status: 'running'
-    });
+    res.success(
+        {
+            version: '1.0.0',
+            status: 'running'
+        },
+        'API Centre Commercial - m1p13mean-tiarintsoa-jason'
+    );
 });
 
-// TODO: Importer les routes ici
-// app.use('/api/auth', require('./routes/auth.routes'));
+// Routes
+app.use('/api/auth', require('./routes/auth.routes'));
 // app.use('/api/users', require('./routes/user.routes'));
 // app.use('/api/boutiques', require('./routes/boutique.routes'));
 // app.use('/api/categories', require('./routes/categorie.routes'));
@@ -40,16 +44,15 @@ app.get('/', (req, res) => {
 
 // Gestion des erreurs 404
 app.use((req, res) => {
-    res.status(404).json({ message: 'Route non trouvée' });
+    res.fail('Route non trouvée', 404);
 });
 
 // Gestion globale des erreurs
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({ 
-        message: 'Erreur serveur', 
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined 
-    });
+    if (res.headersSent) return next(err);
+    const message = process.env.NODE_ENV === 'development' ? err.message : 'Erreur serveur';
+    res.fail(message, 500);
 });
 
 const PORT = process.env.PORT || 3000;
