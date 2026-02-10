@@ -33,9 +33,9 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/demandes-boutiques', require('./routes/demandeBoutique.routes'));
+app.use('/api/categories', require('./routes/categorie.routes'));
 // app.use('/api/users', require('./routes/user.routes'));
 // app.use('/api/boutiques', require('./routes/boutique.routes'));
-// app.use('/api/categories', require('./routes/categorie.routes'));
 // app.use('/api/etages', require('./routes/etage.routes'));
 // app.use('/api/emplacements', require('./routes/emplacement.routes'));
 // app.use('/api/produits', require('./routes/produit.routes'));
