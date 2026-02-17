@@ -69,8 +69,6 @@ exports.remove = async (req, res, next) => {
 }
 
 
-const Categorie = require('../models/Categorie');
-
 /**
  * Get all categories
  */
