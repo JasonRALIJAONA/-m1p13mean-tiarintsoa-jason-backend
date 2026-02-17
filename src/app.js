@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/db');
 const responseMiddleware = require('./middlewares/response.middleware');
+const mongoose = require('mongoose');
 
 // Connexion à la base de données
 connectDB();
@@ -28,6 +29,18 @@ app.get('/', (req, res) => {
         },
         'API Centre Commercial - m1p13mean-tiarintsoa-jason'
     );
+});
+
+// Health checks
+app.get('/health', (req, res) => {
+    res.success({ status: 'ok' }, 'Health check');
+});
+
+app.get('/ready', (req, res) => {
+    const dbState = mongoose.connection.readyState; // 0 = disconnected, 1 = connected
+    const isDbUp = dbState === 1;
+    if (!isDbUp) return res.fail('DB not ready', 503, { dbState });
+    res.success({ status: 'ready', dbState }, 'Readiness check');
 });
 
 // Routes
