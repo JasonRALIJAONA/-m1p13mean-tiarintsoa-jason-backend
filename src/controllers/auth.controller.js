@@ -75,7 +75,8 @@ exports.loginAdmin = async (req, res, next) => {
             return res.fail('Identifiants invalides', 401);
         }
 
-        const token = createToken(user);
+        // const token = createToken(user);
+        const token = null; // Waiting for admin's validation
         return res.success(formatAuthResponse(user, token), 'Connexion administrateur réussie', 200);
     } catch (error) {
         next(error);
