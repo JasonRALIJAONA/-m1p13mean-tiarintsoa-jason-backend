@@ -29,6 +29,20 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true
+        },
+        isApproved: {
+            type: Boolean,
+            default: function() {
+                // Auto-approve admins and acheteurs, but not boutiques
+                return this.role !== 'boutique';
+            }
+        },
+        approvedAt: {
+            type: Date
+        },
+        approvedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
         }
     },
     { timestamps: true }

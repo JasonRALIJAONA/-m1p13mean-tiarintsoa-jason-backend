@@ -35,7 +35,8 @@ const seedData = async () => {
                 prenom: 'Rihantiana',
                 email: 'admin@centrecommercial.mg',
                 password: 'password123',
-                role: 'admin'
+                role: 'admin',
+                isApproved: true
             });
         }
 

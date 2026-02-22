@@ -17,7 +17,8 @@ const formatAuthResponse = (user, token) => ({
         email: user.email,
         role: user.role,
         nom: user.nom,
-        prenom: user.prenom
+        prenom: user.prenom,
+        isApproved: user.isApproved
     }
 });
 
@@ -67,6 +68,11 @@ exports.login = async (req, res, next) => {
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.fail('Identifiants invalides', 401);
+        }
+
+        // Check if boutique user is approved
+        if (user.role === 'boutique' && !user.isApproved) {
+            return res.fail('Votre compte est en attente d\'approbation par un administrateur', 403);
         }
 
         const token = createToken(user);
