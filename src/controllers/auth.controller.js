@@ -44,7 +44,8 @@ exports.register = async (req, res, next) => {
             prenom
         });
 
-        const token = createToken(user);
+        // const token = createToken(user);
+        const token = null; // No token issued at registration, admin approval required
         return res.success(formatAuthResponse(user, token), 'Inscription réussie', 201);
     } catch (error) {
         next(error);
@@ -75,8 +76,7 @@ exports.loginAdmin = async (req, res, next) => {
             return res.fail('Identifiants invalides', 401);
         }
 
-        // const token = createToken(user);
-        const token = null; // Waiting for admin's validation
+        const token = createToken(user);
         return res.success(formatAuthResponse(user, token), 'Connexion administrateur réussie', 200);
     } catch (error) {
         next(error);
