@@ -15,18 +15,18 @@ const { createCategorieValidator, updateCategorieValidator } = require('../valid
 const categorieController = require('../controllers/categorie.controller');
 
 // GET all categories
-router.get('/', categorieController.getAllCategories);
+router.get('/', auth, authorize(['admin']), categorieController.getAllCategories);
 
 // GET a single category by ID
-router.get('/:id', categorieController.getCategorieById);
+router.get('/:id', auth, authorize(['admin']), categorieController.getCategorieById);
 
 // POST create a new category
-router.post('/', categorieController.createCategorie);
+router.post('/', auth, authorize(['admin']), categorieController.createCategorie);
 
 // PUT update a category
-router.put('/:id', categorieController.updateCategorie);
+router.put('/:id', auth, authorize(['admin']), categorieController.updateCategorie);
 
 // DELETE a category
-router.delete('/:id', categorieController.deleteCategorie);
+router.delete('/:id', auth, authorize(['admin']), categorieController.deleteCategorie);
 
 module.exports = router;
