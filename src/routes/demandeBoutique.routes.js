@@ -4,8 +4,12 @@ const ctrl = require('../controllers/demandeBoutique.controller');
 const { auth, authorize } = require('../middlewares/auth.middleware');
 const { createDemandeValidator, listDemandeValidator, updateStatutValidator } = require('../validators/demandeBoutique.validator');
 
-// Public : soumettre une demande
-router.post('/', createDemandeValidator, ctrl.createDemande);
+// Boutique : soumettre une demande d'emplacement (authentifié, rôle boutique)
+router.post('/', auth, authorize(['boutique']), createDemandeValidator, ctrl.createDemande);
+
+// Boutique : consulter ses propres demandes
+// Note: /mes-demandes must be declared BEFORE /:id to avoid route collision
+router.get('/mes-demandes', auth, authorize(['boutique']), ctrl.getMesDemandes);
 
 // Admin : lister, consulter, mettre à jour le statut
 router.get('/', auth, authorize(['admin']), listDemandeValidator, ctrl.listDemandes);

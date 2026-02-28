@@ -1,15 +1,8 @@
 const { body, param, query } = require('express-validator');
 
 const createDemandeValidator = [
-    body('nom').notEmpty().withMessage('Nom requis').trim(),
-    body('description').notEmpty().withMessage('Description requise').trim(),
-    body('categorieId').isMongoId().withMessage('Categorie invalide'),
-    body('logo').optional().isString().withMessage('Logo invalide'),
-    body('emplacementSouhaiteId').optional().isMongoId().withMessage('Emplacement souhaite invalide'),
-    body('contactNom').notEmpty().withMessage('Nom du responsable requis').trim(),
-    body('contactPrenom').notEmpty().withMessage('Prenom du responsable requis').trim(),
-    body('contactEmail').isEmail().withMessage('Email invalide').normalizeEmail(),
-    body('contactTelephone').notEmpty().withMessage('Telephone requis').trim()
+    // boutiqueId is injected server-side from req.user, not sent by the client
+    body('emplacementSouhaiteId').isMongoId().withMessage('Emplacement souhaité invalide')
 ];
 
 const listDemandeValidator = [
