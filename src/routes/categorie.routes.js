@@ -15,10 +15,10 @@ const { createCategorieValidator, updateCategorieValidator } = require('../valid
 const categorieController = require('../controllers/categorie.controller');
 
 // GET all categories
-router.get('/', auth, authorize(['admin']), categorieController.getAllCategories);
+router.get('/', categorieController.getAllCategories);
 
 // GET a single category by ID
-router.get('/:id', auth, authorize(['admin']), categorieController.getCategorieById);
+router.get('/:id', categorieController.getCategorieById);
 
 // POST create a new category
 router.post('/', auth, authorize(['admin']), categorieController.createCategorie);
