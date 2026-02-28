@@ -51,6 +51,7 @@ app.use('/api/boutiques', require('./routes/boutique.routes'));
 app.use('/api/categories', require('./routes/categorie.routes'));
 app.use('/api/etages', require('./routes/etage.routes'));
 app.use('/api/emplacements', require('./routes/emplacement.routes'));
+app.use('/api/visites', require('./routes/visite.routes'));
 // app.use('/api/produits', require('./routes/produit.routes'));
 // app.use('/api/promotions', require('./routes/promotion.routes'));
 // app.use('/api/notifications', require('./routes/notification.routes'));
