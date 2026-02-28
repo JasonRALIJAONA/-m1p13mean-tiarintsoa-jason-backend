@@ -1,8 +1,10 @@
 const { body, param, query } = require('express-validator');
 
 const createDemandeValidator = [
-    // boutiqueId is injected server-side from req.user, not sent by the client
-    body('emplacementSouhaiteId').isMongoId().withMessage('Emplacement souhaité invalide')
+    body('boutiqueId').isMongoId().withMessage('Identifiant de boutique invalide'),
+    body('emplacementSouhaiteId').isMongoId().withMessage('Emplacement souhaité invalide'),
+    body('dateDebutSouhaitee').isISO8601().withMessage('Date de début invalide (format ISO 8601 requis)'),
+    body('dateFinSouhaitee').optional({ nullable: true }).isISO8601().withMessage('Date de fin invalide (format ISO 8601 requis)')
 ];
 
 const listDemandeValidator = [

@@ -6,6 +6,9 @@ const { auth, authorize } = require('../middlewares/auth.middleware');
 // GET all shops
 router.get('/', boutiqueController.getAllBoutiques);
 
+// GET authenticated user's own shops — must be before /:id to avoid param conflict
+router.get('/mes-boutiques', auth, authorize(['boutique']), boutiqueController.getMesBoutiques);
+
 // GET shops by category
 router.get('/categorie/:categorieId', boutiqueController.getBoutiquesByCategorie);
 

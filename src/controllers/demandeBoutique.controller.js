@@ -11,8 +11,8 @@ const POPULATE = [
 
 /**
  * POST /api/demandes-boutiques
- * Authenticated boutique user submits a slot request.
- * boutiqueId is resolved server-side from req.user.
+ * Authenticated boutique user submits a slot request for one of their boutiques.
+ * boutiqueId must be provided in the request body and must belong to req.user.
  */
 exports.createDemande = async (req, res, next) => {
     try {
@@ -21,14 +21,16 @@ exports.createDemande = async (req, res, next) => {
             return res.fail('Validation échouée', 400, errors.array());
         }
 
-        // Resolve the boutique that belongs to the authenticated user
-        const boutique = await Boutique.findOne({ userId: req.user.userId });
+        const { boutiqueId, emplacementSouhaiteId, dateDebutSouhaitee, dateFinSouhaitee } = req.body;
+
+        // Verify the boutique exists and belongs to the authenticated user
+        const boutique = await Boutique.findOne({ _id: boutiqueId, userId: req.user.userId });
         if (!boutique) {
-            return res.fail('Aucune boutique associée à ce compte', 404);
+            return res.fail('Boutique introuvable ou accès refusé', 404);
         }
 
         // Verify the targeted emplacement is free
-        const emplacement = await Emplacement.findById(req.body.emplacementSouhaiteId);
+        const emplacement = await Emplacement.findById(emplacementSouhaiteId);
         if (!emplacement) {
             return res.fail('Emplacement introuvable', 404);
         }
@@ -44,7 +46,9 @@ exports.createDemande = async (req, res, next) => {
 
         const demande = await DemandeBoutique.create({
             boutiqueId: boutique._id,
-            emplacementSouhaiteId: req.body.emplacementSouhaiteId
+            emplacementSouhaiteId,
+            dateDebutSouhaitee,
+            dateFinSouhaitee: dateFinSouhaitee || null
         });
 
         const populated = await DemandeBoutique.findById(demande._id).populate(POPULATE);
@@ -78,14 +82,21 @@ exports.listDemandes = async (req, res, next) => {
  * GET /api/demandes-boutiques/mes-demandes
  * Boutique: list own requests.
  */
+/**
+ * GET /api/demandes-boutiques/mes-demandes
+ * Boutique: list requests for all boutiques owned by the authenticated user.
+ */
 exports.getMesDemandes = async (req, res, next) => {
     try {
-        const boutique = await Boutique.findOne({ userId: req.user.userId });
-        if (!boutique) {
+        const boutiques = await Boutique.find({ userId: req.user.userId }, '_id');
+        if (!boutiques.length) {
             return res.success([], 'Aucune boutique associée');
         }
 
-        const demandes = await DemandeBoutique.find({ boutiqueId: boutique._id }).populate(POPULATE).sort({ createdAt: -1 });
+        const boutiqueIds = boutiques.map(b => b._id);
+        const demandes = await DemandeBoutique.find({ boutiqueId: { $in: boutiqueIds } })
+            .populate(POPULATE)
+            .sort({ createdAt: -1 });
         return res.success(demandes, 'Mes demandes');
     } catch (error) {
         next(error);

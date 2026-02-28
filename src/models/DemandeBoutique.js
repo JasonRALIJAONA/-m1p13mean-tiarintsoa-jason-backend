@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 /**
  * DemandeBoutique — slot location request submitted by an approved shop account.
- * An authenticated boutique user requests a specific available emplacement.
+ * A boutique user selects which of their boutiques is requesting a specific available emplacement.
  * On acceptance the emplacement is automatically marked as occupied.
  */
 const demandeBoutiqueSchema = new mongoose.Schema(
@@ -16,6 +16,14 @@ const demandeBoutiqueSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Emplacement',
             required: [true, 'L\'emplacement souhaité est requis']
+        },
+        dateDebutSouhaitee: {
+            type: Date,
+            required: [true, 'La date de début souhaitée est requise']
+        },
+        dateFinSouhaitee: {
+            type: Date,
+            default: null
         },
         statut: { type: String, enum: ['en_attente', 'acceptee', 'refusee'], default: 'en_attente' },
         motifRefus: { type: String, default: null }

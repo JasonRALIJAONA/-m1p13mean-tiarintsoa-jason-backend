@@ -1,6 +1,24 @@
 const Boutique = require('../models/Boutique');
 
 /**
+ * GET /boutiques/mes-boutiques
+ * Returns all shops owned by the authenticated user.
+ */
+exports.getMesBoutiques = async (req, res) => {
+  try {
+    const boutiques = await Boutique.find({ userId: req.user.userId })
+      .populate('categorieId', 'nom description icon couleur')
+      .populate('userId', 'nom email')
+      .sort({ nom: 1 });
+
+    res.success(boutiques, 'Mes boutiques récupérées avec succès');
+  } catch (error) {
+    console.error('Error fetching user boutiques:', error);
+    res.fail('Erreur lors de la récupération de vos boutiques', 500);
+  }
+};
+
+/**
  * Get all shops with populated references
  */
 exports.getAllBoutiques = async (req, res) => {
