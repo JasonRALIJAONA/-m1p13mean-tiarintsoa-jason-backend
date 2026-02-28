@@ -5,14 +5,16 @@ const Emplacement = require('../models/Emplacement');
 
 /** Shared populate spec for all reads */
 const POPULATE = [
-    { path: 'boutiqueId', select: 'nom logo categorieId userId' },
+    { path: 'userId', select: 'nom prenom email' },
+    { path: 'categorieId', select: 'nom couleur icon' },
+    { path: 'boutiqueId', select: 'nom logo' },
     { path: 'emplacementSouhaiteId', select: 'numero statut etageId coordonnees', populate: { path: 'etageId', select: 'nom niveau' } }
 ];
 
 /**
  * POST /api/demandes-boutiques
- * Authenticated boutique user submits a slot request for one of their boutiques.
- * boutiqueId must be provided in the request body and must belong to req.user.
+ * Authenticated boutique user submits a slot request with embedded shop info.
+ * No Boutique document is needed at this stage.
  */
 exports.createDemande = async (req, res, next) => {
     try {
@@ -21,13 +23,11 @@ exports.createDemande = async (req, res, next) => {
             return res.fail('Validation échouée', 400, errors.array());
         }
 
-        const { boutiqueId, emplacementSouhaiteId, dateDebutSouhaitee, dateFinSouhaitee } = req.body;
-
-        // Verify the boutique exists and belongs to the authenticated user
-        const boutique = await Boutique.findOne({ _id: boutiqueId, userId: req.user.userId });
-        if (!boutique) {
-            return res.fail('Boutique introuvable ou accès refusé', 404);
-        }
+        const {
+            nomBoutique, description, categorieId,
+            heureOuverture, heureFermeture, joursOuverture,
+            emplacementSouhaiteId, dateDebutSouhaitee, dateFinSouhaitee
+        } = req.body;
 
         // Verify the targeted emplacement is free
         const emplacement = await Emplacement.findById(emplacementSouhaiteId);
@@ -38,14 +38,24 @@ exports.createDemande = async (req, res, next) => {
             return res.fail('Cet emplacement n\'est pas disponible', 409);
         }
 
-        // Prevent duplicate pending requests for the same boutique
-        const existing = await DemandeBoutique.findOne({ boutiqueId: boutique._id, statut: 'en_attente' });
+        // Prevent duplicate pending requests from the same user for the same emplacement
+        const existing = await DemandeBoutique.findOne({
+            userId: req.user.userId,
+            emplacementSouhaiteId,
+            statut: 'en_attente'
+        });
         if (existing) {
-            return res.fail('Une demande est déjà en cours pour cette boutique', 409);
+            return res.fail('Une demande en attente existe déjà pour cet emplacement', 409);
         }
 
         const demande = await DemandeBoutique.create({
-            boutiqueId: boutique._id,
+            userId: req.user.userId,
+            nomBoutique,
+            description: description || '',
+            categorieId,
+            heureOuverture,
+            heureFermeture,
+            joursOuverture: joursOuverture || [],
             emplacementSouhaiteId,
             dateDebutSouhaitee,
             dateFinSouhaitee: dateFinSouhaitee || null
@@ -80,21 +90,11 @@ exports.listDemandes = async (req, res, next) => {
 
 /**
  * GET /api/demandes-boutiques/mes-demandes
- * Boutique: list own requests.
- */
-/**
- * GET /api/demandes-boutiques/mes-demandes
- * Boutique: list requests for all boutiques owned by the authenticated user.
+ * Boutique: list requests submitted by the authenticated user.
  */
 exports.getMesDemandes = async (req, res, next) => {
     try {
-        const boutiques = await Boutique.find({ userId: req.user.userId }, '_id');
-        if (!boutiques.length) {
-            return res.success([], 'Aucune boutique associée');
-        }
-
-        const boutiqueIds = boutiques.map(b => b._id);
-        const demandes = await DemandeBoutique.find({ boutiqueId: { $in: boutiqueIds } })
+        const demandes = await DemandeBoutique.find({ userId: req.user.userId })
             .populate(POPULATE)
             .sort({ createdAt: -1 });
         return res.success(demandes, 'Mes demandes');
@@ -144,12 +144,27 @@ exports.updateStatut = async (req, res, next) => {
         demande.motifRefus = statut === 'refusee' ? (motifRefus || null) : null;
         await demande.save();
 
-        // On acceptance: assign the emplacement to the boutique
+        // On acceptance: create the Boutique from embedded info and assign the emplacement
         if (statut === 'acceptee') {
+            const boutique = await Boutique.create({
+                userId: demande.userId,
+                nom: demande.nomBoutique,
+                description: demande.description,
+                categorieId: demande.categorieId,
+                heureOuverture: demande.heureOuverture,
+                heureFermeture: demande.heureFermeture,
+                joursOuverture: demande.joursOuverture,
+                statut: 'validee'
+            });
+
             await Emplacement.findByIdAndUpdate(
                 demande.emplacementSouhaiteId,
-                { boutiqueId: demande.boutiqueId, statut: 'occupe' }
+                { boutiqueId: boutique._id, statut: 'occupe' }
             );
+
+            // Link the created boutique back to the demand
+            demande.boutiqueId = boutique._id;
+            await demande.save();
         }
 
         const populated = await DemandeBoutique.findById(demande._id).populate(POPULATE);
