@@ -21,11 +21,10 @@ const visiteSchema = new mongoose.Schema(
     { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-visiteSchema.pre('validate', function (next) {
+visiteSchema.pre('validate', function () {
     if (this.type === 'boutique' && !this.boutiqueId) {
-        return next(new Error('boutiqueId requis pour type boutique'));
+        throw new Error('boutiqueId requis pour type boutique');
     }
-    next();
 });
 
 visiteSchema.index({ type: 1, createdAt: -1 });
