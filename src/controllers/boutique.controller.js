@@ -96,6 +96,31 @@ exports.getBoutiquesByStatut = async (req, res) => {
 };
 
 /**
+ * POST /boutiques/mes-boutiques
+ * Creates a new shop owned by the authenticated boutique user.
+ * The userId is automatically set from the JWT token.
+ */
+exports.createMaBoutique = async (req, res) => {
+  try {
+    const boutique = new Boutique({
+      ...req.body,
+      userId: req.user.userId,
+      statut: 'en_attente',
+    });
+    await boutique.save();
+
+    const populatedBoutique = await Boutique.findById(boutique._id)
+      .populate('categorieId', 'nom description icon couleur')
+      .populate('userId', 'nom email');
+
+    res.success(populatedBoutique, 'Boutique créée avec succès', 201);
+  } catch (error) {
+    console.error('Error creating boutique (owner):', error);
+    res.fail(error.message || 'Erreur lors de la création de la boutique', 500);
+  }
+};
+
+/**
  * Create a new shop
  */
 exports.createBoutique = async (req, res) => {

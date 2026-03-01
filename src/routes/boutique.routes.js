@@ -9,6 +9,9 @@ router.get('/', boutiqueController.getAllBoutiques);
 // GET authenticated user's own shops — must be before /:id to avoid param conflict
 router.get('/mes-boutiques', auth, authorize(['boutique']), boutiqueController.getMesBoutiques);
 
+// POST create a new shop as the authenticated boutique owner
+router.post('/mes-boutiques', auth, authorize(['boutique']), boutiqueController.createMaBoutique);
+
 // GET shops by category
 router.get('/categorie/:categorieId', boutiqueController.getBoutiquesByCategorie);
 
