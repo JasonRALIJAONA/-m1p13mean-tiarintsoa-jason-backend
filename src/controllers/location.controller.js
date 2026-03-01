@@ -8,6 +8,23 @@ const BOUTIQUE_POPULATE = {
 };
 
 /**
+ * GET /api/locations
+ * Admin only: return all locations (paginated if needed).
+ */
+exports.getAll = async (req, res, next) => {
+    try {
+        const locations = await LocationEmplacement.find()
+            .sort({ dateDebut: -1 })
+            .populate(BOUTIQUE_POPULATE)
+            .populate({ path: 'emplacementId', select: 'numero coordonnees etageId' });
+
+        return res.success(locations, 'Toutes les locations');
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * GET /api/locations/actives?etageId=
  * Public: return all active locations (started, not yet ended) for a given floor.
  * "Active" means: dateDebut <= now AND (dateFin IS NULL OR dateFin >= now)
