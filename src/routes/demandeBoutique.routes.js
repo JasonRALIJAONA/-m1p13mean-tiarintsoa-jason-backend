@@ -10,10 +10,10 @@ router.post('/', auth, authorize(['boutique']), createDemandeValidator, ctrl.cre
 // Boutique : consulter ses propres demandes
 // Note: /mes-demandes must be declared BEFORE /:id to avoid route collision
 router.get('/mes-demandes', auth, authorize(['boutique']), ctrl.getMesDemandes);
+router.get('/:id', auth, authorize(['admin', 'boutique']), ctrl.getDemande);
 
 // Admin : lister, consulter, mettre à jour le statut
 router.get('/', auth, authorize(['admin']), listDemandeValidator, ctrl.listDemandes);
-router.get('/:id', auth, authorize(['admin']), ctrl.getDemande);
 router.patch('/:id/statut', auth, authorize(['admin']), updateStatutValidator, ctrl.updateStatut);
 
 module.exports = router;
