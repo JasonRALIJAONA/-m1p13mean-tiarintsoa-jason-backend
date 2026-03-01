@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const DemandeBoutique = require('../models/DemandeBoutique');
 const Boutique = require('../models/Boutique');
 const Emplacement = require('../models/Emplacement');
+const LocationEmplacement = require('../models/LocationEmplacement');
 
 /** Shared populate spec for all reads */
 const POPULATE = [
@@ -29,13 +30,26 @@ exports.createDemande = async (req, res, next) => {
             emplacementSouhaiteId, dateDebutSouhaitee, dateFinSouhaitee
         } = req.body;
 
-        // Verify the targeted emplacement is free
+        // Verify the targeted emplacement exists
         const emplacement = await Emplacement.findById(emplacementSouhaiteId);
         if (!emplacement) {
             return res.fail('Emplacement introuvable', 404);
         }
-        if (emplacement.statut !== 'libre') {
-            return res.fail('Cet emplacement n\'est pas disponible', 409);
+
+        // Check for date-range overlap with existing active locations on this slot
+        const overlapFilter = {
+            emplacementId: emplacementSouhaiteId,
+            $or: [
+                { dateFin: null },
+                { dateFin: { $gte: new Date(dateDebutSouhaitee) } }
+            ]
+        };
+        if (dateFinSouhaitee) {
+            overlapFilter.dateDebut = { $lte: new Date(dateFinSouhaitee) };
+        }
+        const overlap = await LocationEmplacement.findOne(overlapFilter);
+        if (overlap) {
+            return res.fail('Cet emplacement est déjà occupé sur cette période', 409);
         }
 
         // Prevent duplicate pending requests from the same user for the same emplacement
@@ -157,10 +171,15 @@ exports.updateStatut = async (req, res, next) => {
                 statut: 'validee'
             });
 
-            await Emplacement.findByIdAndUpdate(
-                demande.emplacementSouhaiteId,
-                { boutiqueId: boutique._id, statut: 'occupe' }
-            );
+            // Create the location record (slot occupancy is now derived from this)
+            await LocationEmplacement.create({
+                demandeId: demande._id,
+                boutiqueId: boutique._id,
+                emplacementId: demande.emplacementSouhaiteId,
+                userId: demande.userId,
+                dateDebut: demande.dateDebutSouhaitee,
+                dateFin: demande.dateFinSouhaitee || null
+            });
 
             // Link the created boutique back to the demand
             demande.boutiqueId = boutique._id;

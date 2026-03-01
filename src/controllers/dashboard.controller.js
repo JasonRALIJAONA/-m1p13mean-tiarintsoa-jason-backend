@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Visite = require('../models/Visite');
 const Emplacement = require('../models/Emplacement');
+const LocationEmplacement = require('../models/LocationEmplacement');
 
 exports.getAdminStats = async (req, res, next) => {
     try {
@@ -17,12 +18,14 @@ exports.getAdminStats = async (req, res, next) => {
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 
+        const now = new Date();
+
         const [
             totalSiteVisits,
             todaySiteVisits,
             visitsByDayRaw,
             totalSlots,
-            occupiedSlots
+            occupiedSlotsAgg
         ] = await Promise.all([
             Visite.countDocuments({ type: 'site' }),
             Visite.countDocuments({ type: 'site', createdAt: { $gte: todayStart } }),
@@ -47,8 +50,23 @@ exports.getAdminStats = async (req, res, next) => {
                 { $sort: { _id: 1 } }
             ]),
             Emplacement.countDocuments(),
-            Emplacement.countDocuments({ statut: 'occupe' })
+            // Count distinct slots that have an active location right now
+            LocationEmplacement.aggregate([
+                {
+                    $match: {
+                        dateDebut: { $lte: now },
+                        $or: [
+                            { dateFin: null },
+                            { dateFin: { $gte: now } }
+                        ]
+                    }
+                },
+                { $group: { _id: '$emplacementId' } },
+                { $count: 'total' }
+            ])
         ]);
+
+        const occupiedSlots = occupiedSlotsAgg.length > 0 ? occupiedSlotsAgg[0].total : 0;
 
         const visitsMap = new Map(visitsByDayRaw.map((item) => [item._id, item.count]));
         const visitorsSeries = [];
