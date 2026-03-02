@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/db');
 const responseMiddleware = require('./middlewares/response.middleware');
+const mongoose = require('mongoose');
 
 // Connexion à la base de données
 connectDB();
@@ -30,16 +31,44 @@ app.get('/', (req, res) => {
     );
 });
 
+// Version (Render metadata)
+app.get('/version', (req, res) => {
+    res.success(
+        {
+            commit: process.env.RENDER_GIT_COMMIT || null,
+            branch: process.env.RENDER_GIT_BRANCH || null,
+            repo: process.env.RENDER_GIT_REPO_SLUG || null,
+            packageVersion: process.env.npm_package_version || null
+        },
+        'Version info'
+    );
+});
+
+// Health checks
+app.get('/health', (req, res) => {
+    res.success({ status: 'ok' }, 'Health check');
+});
+
+app.get('/ready', (req, res) => {
+    const dbState = mongoose.connection.readyState; // 0 = disconnected, 1 = connected
+    const isDbUp = dbState === 1;
+    if (!isDbUp) return res.fail('DB not ready', 503, { dbState });
+    res.success({ status: 'ready', dbState }, 'Readiness check');
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/demandes-boutiques', require('./routes/demandeBoutique.routes'));
 app.use('/api/boutiques', require('./routes/boutique.routes'));
 app.use('/api/categories', require('./routes/categorie.routes'));
 app.use('/api/etages', require('./routes/etage.routes'));
 app.use('/api/emplacements', require('./routes/emplacement.routes'));
-// app.use('/api/users', require('./routes/user.routes'));
-// app.use('/api/produits', require('./routes/produit.routes'));
-// app.use('/api/promotions', require('./routes/promotion.routes'));
+app.use('/api/visites', require('./routes/visite.routes'));
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/locations', require('./routes/location.routes'));
+app.use('/api/produits', require('./routes/produit.routes'));
+app.use('/api/promotions', require('./routes/promotion.routes'));
 // app.use('/api/notifications', require('./routes/notification.routes'));
 // app.use('/api/centre', require('./routes/centre.routes'));
 

@@ -5,13 +5,13 @@ const { auth, authorize } = require('../middlewares/auth.middleware');
 const { createCategorieValidator, updateCategorieValidator } = require('../validators/categorie.validator');
 
 // Admin uniquement
-router.use(auth, authorize(['admin']));
+// router.use(auth, authorize(['admin']));
 
-router.get('/', ctrl.list);
-router.get('/:id', ctrl.getOne);
-router.post('/', createCategorieValidator, ctrl.create);
-router.patch('/:id', updateCategorieValidator, ctrl.update);
-router.delete('/:id', ctrl.remove);
+// router.get('/', ctrl.list);
+// router.get('/:id', ctrl.getOne);
+// router.post('/', createCategorieValidator, ctrl.create);
+// router.patch('/:id', updateCategorieValidator, ctrl.update);
+// router.delete('/:id', ctrl.remove);
 const categorieController = require('../controllers/categorie.controller');
 
 // GET all categories
@@ -21,12 +21,12 @@ router.get('/', categorieController.getAllCategories);
 router.get('/:id', categorieController.getCategorieById);
 
 // POST create a new category
-router.post('/', categorieController.createCategorie);
+router.post('/', auth, authorize(['admin']), categorieController.createCategorie);
 
 // PUT update a category
-router.put('/:id', categorieController.updateCategorie);
+router.put('/:id', auth, authorize(['admin']), categorieController.updateCategorie);
 
 // DELETE a category
-router.delete('/:id', categorieController.deleteCategorie);
+router.delete('/:id', auth, authorize(['admin']), categorieController.deleteCategorie);
 
 module.exports = router;

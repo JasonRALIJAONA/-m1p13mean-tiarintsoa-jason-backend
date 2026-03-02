@@ -1,26 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const emplacementController = require('../controllers/emplacement.controller');
+const { auth, authorize } = require('../middlewares/auth.middleware');
 
-// GET all emplacements
+// Public reads (needed for the interactive map and slot selection dropdown)
 router.get('/', emplacementController.getAllEmplacements);
-
-// GET available emplacements
 router.get('/disponibles', emplacementController.getAvailableEmplacements);
-
-// GET emplacements by floor
 router.get('/etage/:etageId', emplacementController.getEmplacementsByEtage);
-
-// GET a single emplacement by ID
 router.get('/:id', emplacementController.getEmplacementById);
 
-// POST create a new emplacement
-router.post('/', emplacementController.createEmplacement);
-
-// PUT update an emplacement
-router.put('/:id', emplacementController.updateEmplacement);
-
-// DELETE an emplacement
-router.delete('/:id', emplacementController.deleteEmplacement);
+// Admin-only mutations
+router.post('/', auth, authorize(['admin']), emplacementController.createEmplacement);
+router.put('/:id', auth, authorize(['admin']), emplacementController.updateEmplacement);
+router.delete('/:id', auth, authorize(['admin']), emplacementController.deleteEmplacement);
 
 module.exports = router;

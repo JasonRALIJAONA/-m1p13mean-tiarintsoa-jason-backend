@@ -66,7 +66,8 @@ exports.remove = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-const Categorie = require('../models/Categorie');
+}
+
 
 /**
  * Get all categories

@@ -7,13 +7,6 @@ exports.getAllEmplacements = async (req, res) => {
   try {
     const emplacements = await Emplacement.find()
       .populate('etageId', 'nom niveau')
-      .populate({
-        path: 'boutiqueId',
-        populate: {
-          path: 'categorieId',
-          select: 'nom couleur icon'
-        }
-      })
       .sort({ numero: 1 });
     
     res.success(emplacements, 'Emplacements récupérés avec succès');
@@ -30,13 +23,6 @@ exports.getEmplacementsByEtage = async (req, res) => {
   try {
     const emplacements = await Emplacement.find({ etageId: req.params.etageId })
       .populate('etageId', 'nom niveau')
-      .populate({
-        path: 'boutiqueId',
-        populate: {
-          path: 'categorieId',
-          select: 'nom couleur icon'
-        }
-      })
       .sort({ numero: 1 });
     
     res.success(emplacements, 'Emplacements récupérés avec succès');
@@ -52,14 +38,7 @@ exports.getEmplacementsByEtage = async (req, res) => {
 exports.getEmplacementById = async (req, res) => {
   try {
     const emplacement = await Emplacement.findById(req.params.id)
-      .populate('etageId', 'nom niveau')
-      .populate({
-        path: 'boutiqueId',
-        populate: {
-          path: 'categorieId',
-          select: 'nom couleur icon'
-        }
-      });
+      .populate('etageId', 'nom niveau');
     
     if (!emplacement) {
       return res.fail('Emplacement non trouvé', 404);
@@ -77,7 +56,7 @@ exports.getEmplacementById = async (req, res) => {
  */
 exports.getAvailableEmplacements = async (req, res) => {
   try {
-    const emplacements = await Emplacement.find({ statut: 'libre' })
+    const emplacements = await Emplacement.find()
       .populate('etageId', 'nom niveau')
       .sort({ numero: 1 });
     
@@ -97,8 +76,7 @@ exports.createEmplacement = async (req, res) => {
     await emplacement.save();
     
     const populatedEmplacement = await Emplacement.findById(emplacement._id)
-      .populate('etageId', 'nom niveau')
-      .populate('boutiqueId');
+      .populate('etageId', 'nom niveau');
     
     res.success(populatedEmplacement, 'Emplacement créé avec succès', 201);
   } catch (error) {
@@ -122,8 +100,7 @@ exports.updateEmplacement = async (req, res) => {
       req.body,
       { new: true, runValidators: true }
     )
-      .populate('etageId', 'nom niveau')
-      .populate('boutiqueId');
+      .populate('etageId', 'nom niveau');
     
     if (!emplacement) {
       return res.fail('Emplacement non trouvé', 404);
