@@ -10,6 +10,8 @@ const Emplacement = require('../models/Emplacement');
 const LocationEmplacement = require('../models/LocationEmplacement');
 const DemandeBoutique = require('../models/DemandeBoutique');
 const User = require('../models/User');
+const Produit = require('../models/Produit');
+const Promotion = require('../models/Promotion');
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -32,7 +34,9 @@ const seedData = async () => {
             Boutique.deleteMany({}),
             Emplacement.deleteMany({}),
             LocationEmplacement.deleteMany({}),
-            DemandeBoutique.deleteMany({})
+            DemandeBoutique.deleteMany({}),
+            Produit.deleteMany({}),
+            Promotion.deleteMany({}),
         ]);
         console.log('🧹 Cleared all collections');
 
@@ -296,7 +300,7 @@ const seedData = async () => {
                 emplacementId: emp('G-B3')._id,
                 userId: shopOwners[4]._id,
                 dateDebut: daysAgo(30),
-                dateFin: daysFrom(60)             // temporary — expires in 60 days
+                dateFin: new Date('2027-06-30')   // temporary — expires mid-2027
             },
             {
                 demandeId: admin._id,
@@ -304,7 +308,7 @@ const seedData = async () => {
                 emplacementId: emp('F1-L1')._id,
                 userId: shopOwners[6]._id,
                 dateDebut: daysAgo(10),
-                dateFin: daysFrom(30)             // temporary — expires in 30 days
+                dateFin: new Date('2027-03-31')   // temporary — expires end of Q1 2027
             },
             // --- Expired location (ended 10 days ago — slot is free again) ---
             {
@@ -352,17 +356,167 @@ const seedData = async () => {
         console.log(`✅ Created ${demandes.length} demandes en attente`);
 
         // ------------------------------------------------------------------
+        // 8. Produits — 4-5 per active boutique
+        // ------------------------------------------------------------------
+        const produitsData = [
+            // Lamba Menakely — vêtements
+            { boutiqueId: bId('Lamba Menakely'), nom: 'Lamba soie naturelle', description: 'Tissu traditionnel en soie naturelle de Madagascar, teint à la main.', prix: 85000, image: 'https://placehold.co/400x300/8B5CF6/FFFFFF?text=Lamba+Soie', enAvant: true },
+            { boutiqueId: bId('Lamba Menakely'), nom: 'Salovana homme', description: 'Tenue officielle en coton brodé, tailles S–XL.', prix: 120000, image: 'https://placehold.co/400x300/8B5CF6/FFFFFF?text=Salovana', enAvant: false },
+            { boutiqueId: bId('Lamba Menakely'), nom: 'Rabane tissée', description: 'Tissu raphia tressé à la main, idéal pour sacs et décoration.', prix: 45000, image: 'https://placehold.co/400x300/8B5CF6/FFFFFF?text=Rabane', enAvant: false },
+            { boutiqueId: bId('Lamba Menakely'), nom: 'Lamba mena cérémonie', description: 'Lamba rouge traditionnel utilisé lors des cérémonies Famadihana.', prix: 160000, image: 'https://placehold.co/400x300/8B5CF6/FFFFFF?text=Lamba+Mena', enAvant: true },
+
+            // Vanille d'Antalaha — épices & extraits
+            { boutiqueId: bId("Vanille d'Antalaha"), nom: 'Gousses de vanille Bourbon', description: 'Gousses de vanille Bourbon entières, 50 g, origine Antalaha.', prix: 35000, image: 'https://placehold.co/400x300/D97706/FFFFFF?text=Vanille+Bourbon', enAvant: true },
+            { boutiqueId: bId("Vanille d'Antalaha"), nom: 'Extrait de vanille pur', description: 'Extrait liquide 100 ml, sans sucre ajouté, double concentration.', prix: 28000, image: 'https://placehold.co/400x300/D97706/FFFFFF?text=Extrait+Vanille', enAvant: false },
+            { boutiqueId: bId("Vanille d'Antalaha"), nom: 'Poudre de vanille', description: 'Gousses séchées et broyées, sachet 20 g.', prix: 18000, image: 'https://placehold.co/400x300/D97706/FFFFFF?text=Poudre+Vanille', enAvant: false },
+            { boutiqueId: bId("Vanille d'Antalaha"), nom: 'Coffret dégustation épices', description: 'Assortiment vanille, girofle et poivre Sauvage, idéal cadeau.', prix: 75000, image: 'https://placehold.co/400x300/D97706/FFFFFF?text=Coffret+Epices', enAvant: true },
+
+            // Restaurant Ravitoto — plats à emporter
+            { boutiqueId: bId('Restaurant Ravitoto'), nom: 'Ravitoto sy hen\'omby', description: 'Plat traditionnel : feuilles de manioc pilées avec viande de zébu.', prix: 22000, image: 'https://placehold.co/400x300/059669/FFFFFF?text=Ravitoto', enAvant: true },
+            { boutiqueId: bId('Restaurant Ravitoto'), nom: 'Romazava', description: 'Bouillon de viande et brèdes, plat national malgache.', prix: 20000, image: 'https://placehold.co/400x300/059669/FFFFFF?text=Romazava', enAvant: false },
+            { boutiqueId: bId('Restaurant Ravitoto'), nom: 'Vary amin\'anana', description: 'Riz aux brèdes de légumes verts, accompagnement traditionnel.', prix: 12000, image: 'https://placehold.co/400x300/059669/FFFFFF?text=Vary+Anana', enAvant: false },
+            { boutiqueId: bId('Restaurant Ravitoto'), nom: 'Koba vary', description: 'Dessert malgache à base de cacahuètes et riz sucré enveloppé en feuille de bananier.', prix: 8000, image: 'https://placehold.co/400x300/059669/FFFFFF?text=Koba+Vary', enAvant: true },
+
+            // Pierres de Madagascar — gemmes & bijoux
+            { boutiqueId: bId('Pierres de Madagascar'), nom: 'Améthyste brute', description: 'Cristal d\'améthyste naturel, 200-300 g, couleur violette intense.', prix: 55000, image: 'https://placehold.co/400x300/7C3AED/FFFFFF?text=Amethyste', enAvant: true },
+            { boutiqueId: bId('Pierres de Madagascar'), nom: 'Labradorite polie', description: 'Pierre polie à reflets bleutés, 5-8 cm, pièce unique.', prix: 42000, image: 'https://placehold.co/400x300/7C3AED/FFFFFF?text=Labradorite', enAvant: false },
+            { boutiqueId: bId('Pierres de Madagascar'), nom: 'Bague tourmaline rose', description: 'Bague artisanale en argent 925 sertie d\'une tourmaline rose de Madagascar.', prix: 185000, image: 'https://placehold.co/400x300/7C3AED/FFFFFF?text=Tourmaline+Rose', enAvant: true },
+            { boutiqueId: bId('Pierres de Madagascar'), nom: 'Saphir bleu brut', description: 'Saphir naturel non traité, 2-3 carats, certificat d\'origine inclus.', prix: 320000, image: 'https://placehold.co/400x300/7C3AED/FFFFFF?text=Saphir+Bleu', enAvant: true },
+            { boutiqueId: bId('Pierres de Madagascar'), nom: 'Quartz rose poli', description: 'Quartz rose en forme de cœur, 100-150 g, idéal décoration.', prix: 18000, image: 'https://placehold.co/400x300/7C3AED/FFFFFF?text=Quartz+Rose', enAvant: false },
+
+            // Artisanat de Tana — objets artisanaux
+            { boutiqueId: bId('Artisanat de Tana'), nom: 'Panier tressé raphia', description: 'Panier artisanal en raphia naturel, motifs géométriques, Ø 35 cm.', prix: 32000, image: 'https://placehold.co/400x300/B45309/FFFFFF?text=Panier+Raphia', enAvant: true },
+            { boutiqueId: bId('Artisanat de Tana'), nom: 'Sculpture zébu en bois', description: 'Figurine zébu sculptée à la main en bois de palissandre, 20 cm.', prix: 48000, image: 'https://placehold.co/400x300/B45309/FFFFFF?text=Zebu+Bois', enAvant: false },
+            { boutiqueId: bId('Artisanat de Tana'), nom: 'Masque traditionnel', description: 'Masque cérémoniel Sakalava peint à la main, bois sacré.', prix: 95000, image: 'https://placehold.co/400x300/B45309/FFFFFF?text=Masque+Trad', enAvant: true },
+            { boutiqueId: bId('Artisanat de Tana'), nom: 'Nappe brodée soie', description: 'Nappe en tissu de soie avec broderies florales, 120×180 cm.', prix: 145000, image: 'https://placehold.co/400x300/B45309/FFFFFF?text=Nappe+Brodee', enAvant: false },
+
+            // Café de Sambava — café & thé
+            { boutiqueId: bId('Café de Sambava'), nom: 'Café Arabica Sambava 250 g', description: 'Café 100 % Arabica de Sambava, torréfaction artisanale, sachet 250 g.', prix: 24000, image: 'https://placehold.co/400x300/92400E/FFFFFF?text=Cafe+Arabica', enAvant: true },
+            { boutiqueId: bId('Café de Sambava'), nom: 'Café Robusta intenso', description: 'Mélange Robusta puissant, idéal espresso, sachet 250 g moulu.', prix: 19000, image: 'https://placehold.co/400x300/92400E/FFFFFF?text=Cafe+Robusta', enAvant: false },
+            { boutiqueId: bId('Café de Sambava'), nom: 'Thé de Tsaratanana vert', description: 'Thé vert des hauts plateaux, récolte manuelle, 50 g.', prix: 15000, image: 'https://placehold.co/400x300/92400E/FFFFFF?text=The+Vert', enAvant: false },
+            { boutiqueId: bId('Café de Sambava'), nom: 'Coffret café & thé', description: 'Assortiment 3 cafés + 2 thés malgaches, emballage cadeau inclus.', prix: 65000, image: 'https://placehold.co/400x300/92400E/FFFFFF?text=Coffret+Cafe', enAvant: true },
+
+            // Épices d'Antsirabe — épices locales
+            { boutiqueId: bId("Épices d'Antsirabe"), nom: 'Poivre noir Tsaratanana', description: 'Poivre noir en grains, récolte manuelle, sachets de 100 g.', prix: 14000, image: 'https://placehold.co/400x300/1F2937/FFFFFF?text=Poivre+Noir', enAvant: true },
+            { boutiqueId: bId("Épices d'Antsirabe"), nom: 'Gingembre séché', description: 'Gingembre des hautes terres séché et tranché, sachet 80 g.', prix: 9000, image: 'https://placehold.co/400x300/1F2937/FFFFFF?text=Gingembre', enAvant: false },
+            { boutiqueId: bId("Épices d'Antsirabe"), nom: 'Curcuma en poudre', description: 'Curcuma bio certifié d\'Antsirabe, pot 100 g, couleur dorée intense.', prix: 11000, image: 'https://placehold.co/400x300/1F2937/FFFFFF?text=Curcuma', enAvant: false },
+            { boutiqueId: bId("Épices d'Antsirabe"), nom: 'Mélange curry malgache', description: 'Blend exclusif de 7 épices locales, sachet 50 g, recette secrète de famille.', prix: 16000, image: 'https://placehold.co/400x300/1F2937/FFFFFF?text=Curry+Malgache', enAvant: true },
+        ];
+        const produits = await Produit.insertMany(produitsData);
+        console.log(`✅ Created ${produits.length} produits`);
+
+        // ------------------------------------------------------------------
+        // 9. Promotions — 5 actives, 3 à venir, 1 expirée
+        // ------------------------------------------------------------------
+        const now = new Date();
+        const pastDate  = (days) => new Date(now.getTime() - days * 86400000);
+        const futureDate = (days) => new Date(now.getTime() + days * 86400000);
+
+        const promotionsData = [
+            // Active promotions (dateDebut ≤ now ≤ dateFin)
+            {
+                boutiqueId: bId('Lamba Menakely'),
+                titre: 'Soldes textiles printemps',
+                description: 'Remise sur toute la gamme Lamba et Lamba Mena jusqu\'à fin juin.',
+                dateDebut: pastDate(10),
+                dateFin: new Date('2027-06-30'),
+                image: 'https://placehold.co/600x200/8B5CF6/FFFFFF?text=Soldes+Lamba',
+                reduction: 20
+            },
+            {
+                boutiqueId: bId("Vanille d'Antalaha"),
+                titre: 'Fête des saveurs — Vanille',
+                description: 'Achetez 2 produits vanille, obtenez 15 % de remise immédiate.',
+                dateDebut: pastDate(5),
+                dateFin: new Date('2027-04-30'),
+                image: 'https://placehold.co/600x200/D97706/FFFFFF?text=Fete+Vanille',
+                reduction: 15
+            },
+            {
+                boutiqueId: bId('Pierres de Madagascar'),
+                titre: 'Collection gemmes rares',
+                description: 'Réduction exceptionnelle sur les saphirs et tourmalines jusqu\'à épuisement du stock.',
+                dateDebut: pastDate(20),
+                dateFin: new Date('2027-12-31'),
+                image: 'https://placehold.co/600x200/7C3AED/FFFFFF?text=Gemmes+Rares',
+                reduction: 10
+            },
+            {
+                boutiqueId: bId('Café de Sambava'),
+                titre: 'Happy hour café',
+                description: 'De 10h à 12h chaque jour : 25 % sur tous les cafés en grains.',
+                dateDebut: pastDate(3),
+                dateFin: new Date('2027-08-31'),
+                image: 'https://placehold.co/600x200/92400E/FFFFFF?text=Happy+Hour+Cafe',
+                reduction: 25
+            },
+            {
+                boutiqueId: bId('Artisanat de Tana'),
+                titre: 'Ventes artisanales été',
+                description: 'Profitez de 30 % de remise sur les paniers et sculptues en bois.',
+                dateDebut: pastDate(1),
+                dateFin: new Date('2027-07-15'),
+                image: 'https://placehold.co/600x200/B45309/FFFFFF?text=Artisanat+Ete',
+                reduction: 30
+            },
+
+            // Upcoming promotions (dateDebut > now)
+            {
+                boutiqueId: bId('Restaurant Ravitoto'),
+                titre: 'Menu spécial fêtes 2027',
+                description: 'Menu traditionnel 5 plats à prix fixe pour les fêtes de fin d\'année.',
+                dateDebut: futureDate(30),
+                dateFin: new Date('2027-01-10'),
+                image: 'https://placehold.co/600x200/059669/FFFFFF?text=Menu+Fetes+2027',
+                reduction: null
+            },
+            {
+                boutiqueId: bId("Épices d'Antsirabe"),
+                titre: 'Journée des épices',
+                description: 'Une journée dédiée aux épices malgaches avec dégustation gratuite et -20 % sur tout.',
+                dateDebut: futureDate(15),
+                dateFin: futureDate(15),
+                image: 'https://placehold.co/600x200/1F2937/FFFFFF?text=Journee+Epices',
+                reduction: 20
+            },
+            {
+                boutiqueId: bId("Vanille d'Antalaha"),
+                titre: 'Nouvelle récolte 2026',
+                description: 'Arrivage de la récolte 2026 : gousses premium en édition limitée.',
+                dateDebut: futureDate(45),
+                dateFin: new Date('2027-03-31'),
+                image: 'https://placehold.co/600x200/D97706/FFFFFF?text=Recolte+2026',
+                reduction: 5
+            },
+
+            // Expired promotion (dateFin < now)
+            {
+                boutiqueId: bId('Lamba Menakely'),
+                titre: 'Ouverture — remise inauguration',
+                description: 'Promotion de lancement : -35 % sur la collection complète pendant 7 jours.',
+                dateDebut: pastDate(60),
+                dateFin: pastDate(53),
+                image: 'https://placehold.co/600x200/8B5CF6/FFFFFF?text=Inauguration',
+                reduction: 35
+            },
+        ];
+        const promotions = await Promotion.insertMany(promotionsData);
+        console.log(`✅ Created ${promotions.length} promotions`);
+
+        // ------------------------------------------------------------------
         // Summary
         // ------------------------------------------------------------------
         console.log('\n✨ Seeding completed successfully');
         console.log('───────────────────────────────────────────');
         console.log('  Comptes de connexion:');
-        console.log('  Admin    → admin@mall.mg          / Admin1234');
+        console.log('  Admin    → admin@mall.mg          / LaCity2026*!');
         console.log('  Boutique → lalaina.rasoa@mail.mg  / Boutique1234');
         console.log('  Acheteur → mirana@mail.mg         / Acheteur1234');
         console.log('───────────────────────────────────────────');
         console.log(`  Emplacements actifs (carte): 7 sur ${emplacements.length}`);
         console.log(`  Emplacement expiré visible : G-R2 (libre à nouveau)`);
+        console.log(`  Produits créés              : ${produits.length}`);
+        console.log(`  Promotions créées           : ${promotions.length} (5 actives, 3 à venir, 1 expirée)`);
         console.log('───────────────────────────────────────────');
         process.exit(0);
 
