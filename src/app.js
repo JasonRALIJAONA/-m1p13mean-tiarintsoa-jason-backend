@@ -31,6 +31,19 @@ app.get('/', (req, res) => {
     );
 });
 
+// Version (Render metadata)
+app.get('/version', (req, res) => {
+    res.success(
+        {
+            commit: process.env.RENDER_GIT_COMMIT || null,
+            branch: process.env.RENDER_GIT_BRANCH || null,
+            repo: process.env.RENDER_GIT_REPO_SLUG || null,
+            packageVersion: process.env.npm_package_version || null
+        },
+        'Version info'
+    );
+});
+
 // Health checks
 app.get('/health', (req, res) => {
     res.success({ status: 'ok' }, 'Health check');
