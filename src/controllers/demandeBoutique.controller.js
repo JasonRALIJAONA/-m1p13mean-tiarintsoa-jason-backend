@@ -9,13 +9,17 @@ const POPULATE = [
     { path: 'userId', select: 'nom prenom email' },
     { path: 'categorieId', select: 'nom couleur icon' },
     { path: 'boutiqueId', select: 'nom logo' },
+    { path: 'boutiqueExistanteId', select: 'nom logo categorieId heureOuverture heureFermeture joursOuverture' },
     { path: 'emplacementSouhaiteId', select: 'numero statut etageId coordonnees', populate: { path: 'etageId', select: 'nom niveau' } }
 ];
 
 /**
  * POST /api/demandes-boutiques
- * Authenticated boutique user submits a slot request with embedded shop info.
- * No Boutique document is needed at this stage.
+ * Authenticated boutique user submits a slot request.
+ *
+ * Two modes:
+ *  - boutiqueExistanteId provided → shop info is read from that Boutique (ownership verified).
+ *  - boutiqueExistanteId absent   → full shop fields must be present in the request body.
  */
 exports.createDemande = async (req, res, next) => {
     try {
@@ -25,10 +29,39 @@ exports.createDemande = async (req, res, next) => {
         }
 
         const {
-            nomBoutique, description, categorieId,
-            heureOuverture, heureFermeture, joursOuverture,
+            boutiqueExistanteId,
             emplacementSouhaiteId, dateDebutSouhaitee, dateFinSouhaitee
         } = req.body;
+
+        let nomBoutique, description, categorieId, logo, heureOuverture, heureFermeture, joursOuverture;
+
+        if (boutiqueExistanteId) {
+            // ── Mode: existing boutique ────────────────────────────────────
+            const boutique = await Boutique.findOne({ _id: boutiqueExistanteId, userId: req.user.userId });
+            if (!boutique) {
+                return res.fail('Boutique introuvable ou accès refusé', 404);
+            }
+            nomBoutique    = boutique.nom;
+            description    = boutique.description || '';
+            categorieId    = boutique.categorieId;
+            logo           = boutique.logo || '';
+            heureOuverture = boutique.heureOuverture;
+            heureFermeture = boutique.heureFermeture;
+            joursOuverture = boutique.joursOuverture || [];
+        } else {
+            // ── Mode: new boutique ─────────────────────────────────────────
+            nomBoutique    = req.body.nomBoutique;
+            description    = req.body.description || '';
+            categorieId    = req.body.categorieId;
+            logo           = req.body.logo || '';
+            heureOuverture = req.body.heureOuverture;
+            heureFermeture = req.body.heureFermeture;
+            joursOuverture = req.body.joursOuverture || [];
+
+            if (!nomBoutique || !categorieId || !heureOuverture || !heureFermeture) {
+                return res.fail('Informations de la boutique incomplètes (nom, catégorie, horaires requis)', 400);
+            }
+        }
 
         // Verify the targeted emplacement exists
         const emplacement = await Emplacement.findById(emplacementSouhaiteId);
@@ -64,12 +97,14 @@ exports.createDemande = async (req, res, next) => {
 
         const demande = await DemandeBoutique.create({
             userId: req.user.userId,
+            boutiqueExistanteId: boutiqueExistanteId || null,
             nomBoutique,
-            description: description || '',
+            description,
             categorieId,
+            logo,
             heureOuverture,
             heureFermeture,
-            joursOuverture: joursOuverture || [],
+            joursOuverture,
             emplacementSouhaiteId,
             dateDebutSouhaitee,
             dateFinSouhaitee: dateFinSouhaitee || null
@@ -90,7 +125,7 @@ exports.listDemandes = async (req, res, next) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.fail('Validation échouée', 400, errors.array());
+            return res.fail('Validation échouée', 400, errors.array())
         }
 
         const { statut } = req.query;
@@ -136,7 +171,11 @@ exports.getDemande = async (req, res, next) => {
 /**
  * PATCH /api/demandes-boutiques/:id/statut
  * Admin: accept or reject a request.
- * On acceptance, auto-assigns the emplacement to the boutique.
+ *
+ * On acceptance:
+ *  - If boutiqueExistanteId is set → reuse that Boutique (no new document created).
+ *  - Otherwise → create a new Boutique from the embedded shop info.
+ * In both cases a LocationEmplacement record is created and boutiqueId is linked.
  */
 exports.updateStatut = async (req, res, next) => {
     try {
@@ -158,31 +197,41 @@ exports.updateStatut = async (req, res, next) => {
         demande.motifRefus = statut === 'refusee' ? (motifRefus || null) : null;
         await demande.save();
 
-        // On acceptance: create the Boutique from embedded info and assign the emplacement
+        // On acceptance: create or reuse the Boutique and assign the emplacement
         if (statut === 'acceptee') {
-            const boutique = await Boutique.create({
-                userId: demande.userId,
-                nom: demande.nomBoutique,
-                description: demande.description,
-                categorieId: demande.categorieId,
-                heureOuverture: demande.heureOuverture,
-                heureFermeture: demande.heureFermeture,
-                joursOuverture: demande.joursOuverture,
-                statut: 'validee'
-            });
+            let boutiqueId;
 
-            // Create the location record (slot occupancy is now derived from this)
+            if (demande.boutiqueExistanteId) {
+                // ── Mode: reuse existing boutique ──────────────────────────
+                boutiqueId = demande.boutiqueExistanteId;
+            } else {
+                // ── Mode: create a new boutique from embedded info ─────────
+                const boutique = await Boutique.create({
+                    userId: demande.userId,
+                    nom: demande.nomBoutique,
+                    description: demande.description,
+                    categorieId: demande.categorieId,
+                    logo: demande.logo || '',
+                    heureOuverture: demande.heureOuverture,
+                    heureFermeture: demande.heureFermeture,
+                    joursOuverture: demande.joursOuverture || [],
+                    statut: 'validee'
+                });
+                boutiqueId = boutique._id;
+            }
+
+            // Create the occupancy record
             await LocationEmplacement.create({
                 demandeId: demande._id,
-                boutiqueId: boutique._id,
+                boutiqueId,
                 emplacementId: demande.emplacementSouhaiteId,
                 userId: demande.userId,
                 dateDebut: demande.dateDebutSouhaitee,
                 dateFin: demande.dateFinSouhaitee || null
             });
 
-            // Link the created boutique back to the demand
-            demande.boutiqueId = boutique._id;
+            // Link the boutique back to the demand
+            demande.boutiqueId = boutiqueId;
             await demande.save();
         }
 
