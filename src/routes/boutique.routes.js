@@ -12,6 +12,9 @@ router.get('/mes-boutiques', auth, authorize(['boutique']), boutiqueController.g
 // POST create a new shop as the authenticated boutique owner
 router.post('/mes-boutiques', auth, authorize(['boutique']), boutiqueController.createMaBoutique);
 
+// PUT update own shop as the authenticated boutique owner
+router.put('/mes-boutiques/:id', auth, authorize(['boutique']), boutiqueController.updateMaBoutique);
+
 // GET shops by category
 router.get('/categorie/:categorieId', boutiqueController.getBoutiquesByCategorie);
 

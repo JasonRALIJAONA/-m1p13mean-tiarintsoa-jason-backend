@@ -96,6 +96,36 @@ exports.getBoutiquesByStatut = async (req, res) => {
 };
 
 /**
+ * PUT /boutiques/mes-boutiques/:id
+ * Updates a shop owned by the authenticated boutique user.
+ * Ownership is verified before applying any changes.
+ */
+exports.updateMaBoutique = async (req, res) => {
+  try {
+    const boutique = await Boutique.findOne({ _id: req.params.id, userId: req.user.userId });
+    if (!boutique) {
+      return res.fail('Boutique non trouvée ou accès refusé', 404);
+    }
+
+    // Prevent overwriting admin-managed fields
+    const { statut, userId, ...updates } = req.body;
+
+    const updated = await Boutique.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    )
+      .populate('categorieId', 'nom description icon couleur')
+      .populate('userId', 'nom email');
+
+    res.success(updated, 'Boutique mise à jour avec succès');
+  } catch (error) {
+    console.error('Error updating boutique (owner):', error);
+    res.fail(error.message || 'Erreur lors de la mise à jour de la boutique', 500);
+  }
+};
+
+/**
  * POST /boutiques/mes-boutiques
  * Creates a new shop owned by the authenticated boutique user.
  * The userId is automatically set from the JWT token.
