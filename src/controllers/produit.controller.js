@@ -70,7 +70,7 @@ exports.getProduitById = async (req, res) => {
  */
 exports.getMesProduits = async (req, res) => {
   try {
-    const mesBoutiques = await Boutique.find({ userId: req.user.id }).select('_id');
+    const mesBoutiques = await Boutique.find({ userId: req.user.userId }).select('_id');
     const boutiqueIds = mesBoutiques.map((b) => b._id);
 
     const produits = await Produit.find({ boutiqueId: { $in: boutiqueIds } })
@@ -95,7 +95,7 @@ exports.createProduit = async (req, res) => {
 
     const { boutiqueId, nom, description, prix, enAvant } = req.body;
 
-    const boutique = await verifyBoutiqueOwnership(boutiqueId, req.user.id);
+    const boutique = await verifyBoutiqueOwnership(boutiqueId, req.user.userId);
     if (!boutique) return res.fail('Boutique non trouvée ou accès refusé', 403);
 
     const imageUrl = req.file ? getImageUrl(req.file) : '';
@@ -129,7 +129,7 @@ exports.updateProduit = async (req, res) => {
     const produit = await Produit.findById(req.params.id);
     if (!produit) return res.fail('Produit non trouvé', 404);
 
-    const boutique = await verifyBoutiqueOwnership(produit.boutiqueId, req.user.id);
+    const boutique = await verifyBoutiqueOwnership(produit.boutiqueId, req.user.userId);
     if (!boutique) return res.fail('Accès refusé', 403);
 
     const { nom, description, prix, enAvant } = req.body;
@@ -169,7 +169,7 @@ exports.deleteProduit = async (req, res) => {
     const produit = await Produit.findById(req.params.id);
     if (!produit) return res.fail('Produit non trouvé', 404);
 
-    const boutique = await verifyBoutiqueOwnership(produit.boutiqueId, req.user.id);
+    const boutique = await verifyBoutiqueOwnership(produit.boutiqueId, req.user.userId);
     if (!boutique) return res.fail('Accès refusé', 403);
 
     if (produit.image) deleteImageFile(produit.image);

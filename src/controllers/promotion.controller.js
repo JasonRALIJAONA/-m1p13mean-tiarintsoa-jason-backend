@@ -90,7 +90,7 @@ exports.getPromotionById = async (req, res) => {
  */
 exports.getMesPromotions = async (req, res) => {
   try {
-    const mesBoutiques = await Boutique.find({ userId: req.user.id }).select('_id');
+    const mesBoutiques = await Boutique.find({ userId: req.user.userId }).select('_id');
     const boutiqueIds = mesBoutiques.map((b) => b._id);
 
     const promotions = await Promotion.find({ boutiqueId: { $in: boutiqueIds } })
@@ -115,7 +115,7 @@ exports.createPromotion = async (req, res) => {
 
     const { boutiqueId, titre, description, dateDebut, dateFin, reduction } = req.body;
 
-    const boutique = await verifyBoutiqueOwnership(boutiqueId, req.user.id);
+    const boutique = await verifyBoutiqueOwnership(boutiqueId, req.user.userId);
     if (!boutique) return res.fail('Boutique non trouvée ou accès refusé', 403);
 
     const imageUrl = req.file ? getImageUrl(req.file) : '';
@@ -150,7 +150,7 @@ exports.updatePromotion = async (req, res) => {
     const promotion = await Promotion.findById(req.params.id);
     if (!promotion) return res.fail('Promotion non trouvée', 404);
 
-    const boutique = await verifyBoutiqueOwnership(promotion.boutiqueId, req.user.id);
+    const boutique = await verifyBoutiqueOwnership(promotion.boutiqueId, req.user.userId);
     if (!boutique) return res.fail('Accès refusé', 403);
 
     const { titre, description, dateDebut, dateFin, reduction } = req.body;
@@ -192,7 +192,7 @@ exports.deletePromotion = async (req, res) => {
     const promotion = await Promotion.findById(req.params.id);
     if (!promotion) return res.fail('Promotion non trouvée', 404);
 
-    const boutique = await verifyBoutiqueOwnership(promotion.boutiqueId, req.user.id);
+    const boutique = await verifyBoutiqueOwnership(promotion.boutiqueId, req.user.userId);
     if (!boutique) return res.fail('Accès refusé', 403);
 
     if (promotion.image) deleteImageFile(promotion.image);
