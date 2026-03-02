@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const Visite = require('../models/Visite');
 const Emplacement = require('../models/Emplacement');
 const LocationEmplacement = require('../models/LocationEmplacement');
+const Boutique = require('../models/Boutique');
 
 const DASHBOARD_TIMEZONE = process.env.DASHBOARD_TIMEZONE
     || Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -42,6 +43,7 @@ exports.getAdminStats = async (req, res, next) => {
             totalSiteVisits,
             todaySiteVisits,
             visitsByDayRaw,
+            topBoutiquesRaw,
             totalSlots,
             occupiedSlotsAgg
         ] = await Promise.all([
@@ -67,6 +69,39 @@ exports.getAdminStats = async (req, res, next) => {
                     }
                 },
                 { $sort: { _id: 1 } }
+            ]),
+            Visite.aggregate([
+                {
+                    $match: {
+                        type: 'boutique',
+                        createdAt: { $gte: periodStart },
+                        boutiqueId: { $ne: null }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$boutiqueId',
+                        visits: { $sum: 1 }
+                    }
+                },
+                { $sort: { visits: -1 } },
+                { $limit: 5 },
+                {
+                    $lookup: {
+                        from: Boutique.collection.name,
+                        localField: '_id',
+                        foreignField: '_id',
+                        as: 'boutique'
+                    }
+                },
+                { $unwind: '$boutique' },
+                {
+                    $project: {
+                        _id: 0,
+                        name: '$boutique.nom',
+                        visits: 1
+                    }
+                }
             ]),
             Emplacement.countDocuments(),
             // Count distinct slots that have an active location right now
@@ -103,6 +138,11 @@ exports.getAdminStats = async (req, res, next) => {
             ? Math.round((occupiedSlots / totalSlots) * 100)
             : 0;
 
+        const topBoutiques = topBoutiquesRaw.map((item) => ({
+            name: item.name,
+            visits: item.visits
+        }));
+
         return res.success(
             {
                 visitors: {
@@ -116,7 +156,8 @@ exports.getAdminStats = async (req, res, next) => {
                     occupied: occupiedSlots,
                     free: freeSlots,
                     occupancyRate
-                }
+                },
+                topBoutiques
             },
             'Statistiques du dashboard admin'
         );
