@@ -3,6 +3,25 @@ const Visite = require('../models/Visite');
 const Emplacement = require('../models/Emplacement');
 const LocationEmplacement = require('../models/LocationEmplacement');
 
+const DASHBOARD_TIMEZONE = process.env.DASHBOARD_TIMEZONE
+    || Intl.DateTimeFormat().resolvedOptions().timeZone
+    || 'UTC';
+
+function formatDateKey(date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: DASHBOARD_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    return `${year}-${month}-${day}`;
+}
+
 exports.getAdminStats = async (req, res, next) => {
     try {
         const errors = validationResult(req);
@@ -11,12 +30,11 @@ exports.getAdminStats = async (req, res, next) => {
         const requestedDays = Number.parseInt(req.query.days || '7', 10);
         const periodDays = Number.isNaN(requestedDays) ? 7 : requestedDays;
 
-        const periodStart = new Date();
-        periodStart.setHours(0, 0, 0, 0);
-        periodStart.setDate(periodStart.getDate() - (periodDays - 1));
-
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
+
+        const periodStart = new Date(todayStart);
+        periodStart.setDate(todayStart.getDate() - (periodDays - 1));
 
         const now = new Date();
 
@@ -41,7 +59,8 @@ exports.getAdminStats = async (req, res, next) => {
                         _id: {
                             $dateToString: {
                                 format: '%Y-%m-%d',
-                                date: '$createdAt'
+                                date: '$createdAt',
+                                timezone: DASHBOARD_TIMEZONE
                             }
                         },
                         count: { $sum: 1 }
@@ -71,12 +90,8 @@ exports.getAdminStats = async (req, res, next) => {
         const visitsMap = new Map(visitsByDayRaw.map((item) => [item._id, item.count]));
         const visitorsSeries = [];
 
-        for (let index = periodDays - 1; index >= 0; index -= 1) {
-            const day = new Date();
-            day.setHours(0, 0, 0, 0);
-            day.setDate(day.getDate() - index);
-
-            const dateKey = day.toISOString().slice(0, 10);
+        for (let cursor = new Date(periodStart); cursor <= todayStart; cursor.setDate(cursor.getDate() + 1)) {
+            const dateKey = formatDateKey(cursor);
             visitorsSeries.push({
                 date: dateKey,
                 count: visitsMap.get(dateKey) || 0
