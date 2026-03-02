@@ -3,6 +3,7 @@ const Visite = require('../models/Visite');
 const Emplacement = require('../models/Emplacement');
 const LocationEmplacement = require('../models/LocationEmplacement');
 const Boutique = require('../models/Boutique');
+const Produit = require('../models/Produit');
 
 const DASHBOARD_TIMEZONE = process.env.DASHBOARD_TIMEZONE
     || Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -160,6 +161,108 @@ exports.getAdminStats = async (req, res, next) => {
                 topBoutiques
             },
             'Statistiques du dashboard admin'
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.getShopStats = async (req, res, next) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.fail('Validation échouée', 400, errors.array());
+
+        const requestedDays = Number.parseInt(req.query.days || '7', 10);
+        const periodDays = Number.isNaN(requestedDays) ? 7 : requestedDays;
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const periodStart = new Date(todayStart);
+        periodStart.setDate(todayStart.getDate() - (periodDays - 1));
+
+        const myBoutiques = await Boutique.find({ userId: req.user.userId }).select('_id nom').lean();
+        const boutiqueIds = myBoutiques.map((boutique) => boutique._id);
+
+        if (boutiqueIds.length === 0) {
+            return res.success(
+                {
+                    visitors: {
+                        periodDays,
+                        series: []
+                    },
+                    totalProducts: 0,
+                    promotedProducts: []
+                },
+                'Dashboard boutique'
+            );
+        }
+
+        const [
+            visitsByDayRaw,
+            totalProducts,
+            promotedProductsRaw
+        ] = await Promise.all([
+            Visite.aggregate([
+                {
+                    $match: {
+                        type: 'boutique',
+                        boutiqueId: { $in: boutiqueIds },
+                        createdAt: { $gte: periodStart }
+                    }
+                },
+                {
+                    $group: {
+                        _id: {
+                            $dateToString: {
+                                format: '%Y-%m-%d',
+                                date: '$createdAt',
+                                timezone: DASHBOARD_TIMEZONE
+                            }
+                        },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ]),
+            Produit.countDocuments({ boutiqueId: { $in: boutiqueIds } }),
+            Produit.find({ boutiqueId: { $in: boutiqueIds }, enAvant: true })
+                .select('nom prix image boutiqueId')
+                .populate('boutiqueId', 'nom')
+                .sort({ createdAt: -1 })
+                .limit(12)
+                .lean()
+        ]);
+
+        const visitsMap = new Map(visitsByDayRaw.map((item) => [item._id, item.count]));
+        const visitorsSeries = [];
+
+        for (let cursor = new Date(periodStart); cursor <= todayStart; cursor.setDate(cursor.getDate() + 1)) {
+            const dateKey = formatDateKey(cursor);
+            visitorsSeries.push({
+                date: dateKey,
+                count: visitsMap.get(dateKey) || 0
+            });
+        }
+
+        const promotedProducts = promotedProductsRaw.map((product) => ({
+            id: String(product._id),
+            name: product.nom,
+            price: product.prix,
+            image: product.image || '',
+            boutiqueName: product.boutiqueId?.nom || ''
+        }));
+
+        return res.success(
+            {
+                visitors: {
+                    periodDays,
+                    series: visitorsSeries
+                },
+                totalProducts,
+                promotedProducts
+            },
+            'Dashboard boutique'
         );
     } catch (error) {
         next(error);
